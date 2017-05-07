@@ -1,11 +1,11 @@
 /* @flow */
 
-import React, {PureComponent} from 'react';
+import React, {Component} from 'react';
 import PropTypes from 'prop-types';
 
 import StyleKeeper from '../style-keeper';
 
-export default class StyleSheet extends PureComponent {
+export default class StyleSheet extends Component {
   static contextTypes = {
     _radiumStyleKeeper: PropTypes.instanceOf(StyleKeeper),
   };
@@ -13,10 +13,8 @@ export default class StyleSheet extends PureComponent {
   constructor() {
     super(...arguments);
 
-    this.state = this._getCSSState();
+    this._css = this.context._radiumStyleKeeper.getCSS();
   }
-
-  state: {css: string};
 
   componentDidMount() {
     this._isMounted = true;
@@ -24,6 +22,10 @@ export default class StyleSheet extends PureComponent {
       this._onChange,
     );
     this._onChange();
+  }
+
+  shouldComponentUpdate() {
+    return false;
   }
 
   componentWillUnmount() {
@@ -35,21 +37,23 @@ export default class StyleSheet extends PureComponent {
 
   _isMounted: ?boolean;
   _subscription: ?{remove: () => void};
-
-  _getCSSState(): {css: string} {
-    return {css: this.context._radiumStyleKeeper.getCSS()};
-  }
+  _root: HTMLElement;
+  _css: string;
 
   _onChange = () => {
-    setTimeout(
-      () => {
-        this._isMounted && this.setState(this._getCSSState());
-      },
-      0,
-    );
+    const nextCSS = this.context._radiumStyleKeeper.getCSS();
+    if (nextCSS !== this._css) {
+      this._root.innerHTML = this.context._radiumStyleKeeper.getCSS();
+      this._css = nextCSS;
+    }
   };
 
   render(): React.Element<any> {
-    return <style dangerouslySetInnerHTML={{__html: this.state.css}} />;
+    return (
+      <style
+        dangerouslySetInnerHTML={{__html: this._css}}
+        ref={c => this._root = c}
+      />
+    );
   }
 }
